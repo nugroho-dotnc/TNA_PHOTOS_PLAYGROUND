@@ -2,6 +2,30 @@
 Instruksi Pembuatan Function untuk Modul Color Processing
 """
 
+import base64
+import io
+
+from PIL import Image
+
+
+def _read_upload_file(file):
+    if hasattr(file, "file"):
+        file.file.seek(0)
+        data = file.file.read()
+        file.file.seek(0)
+        return data
+    if hasattr(file, "read"):
+        data = file.read()
+        return data if isinstance(data, bytes) else data.encode()
+    raise ValueError("UploadFile tidak valid")
+
+
+def _to_base64_png(image):
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+
 def grayscale(file):
     """
     Fungsi: Mengkonversi gambar berwarna ke mode grayscale (hitam-putih).
@@ -11,7 +35,11 @@ def grayscale(file):
       - JSON/Dict dengan field:
         - processed_image (string base64): Gambar grayscale diencoding PNG base64.
     """
-    pass
+    data = _read_upload_file(file)
+    image = Image.open(io.BytesIO(data))
+    processed = image.convert("L")
+    return {"processed_image": _to_base64_png(processed)}
+
 
 def channel(file, channel):
     """
@@ -23,7 +51,20 @@ def channel(file, channel):
       - JSON/Dict dengan field:
         - processed_image (string base64): Gambar dengan channel terisolasi diencoding PNG base64.
     """
-    pass
+    data = _read_upload_file(file)
+    image = Image.open(io.BytesIO(data)).convert("RGB")
+    r, g, b = image.split()
+    channel = channel.upper()
+    if channel == "R":
+        processed = Image.merge("RGB", (r, Image.new("L", image.size), Image.new("L", image.size)))
+    elif channel == "G":
+        processed = Image.merge("RGB", (Image.new("L", image.size), g, Image.new("L", image.size)))
+    elif channel == "B":
+        processed = Image.merge("RGB", (Image.new("L", image.size), Image.new("L", image.size), b))
+    else:
+        raise ValueError("Channel harus 'R', 'G', atau 'B'")
+    return {"processed_image": _to_base64_png(processed)}
+
 
 def hue_saturation(file, hue_shift, sat_scale):
     """
@@ -36,4 +77,12 @@ def hue_saturation(file, hue_shift, sat_scale):
       - JSON/Dict dengan field:
         - processed_image (string base64): Gambar hasil diencoding PNG base64.
     """
-    pass
+    data = _read_upload_file(file)
+    image = Image.open(io.BytesIO(data)).convert("RGB")
+    hsv = image.convert("HSV")
+    h, s, v = hsv.split()
+    h_adjust = int(round(float(hue_shift) * 255.0 / 360.0))
+    h = h.point(lambda p: (p + h_adjust) % 256)
+    s = s.point(lambda p: int(max(0, min(255, p * float(sat_scale)))))
+    processed = Image.merge("HSV", (h, s, v)).convert("RGB")
+    return {"processed_image": _to_base64_png(processed)}

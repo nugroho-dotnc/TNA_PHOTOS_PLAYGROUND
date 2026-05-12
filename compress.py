@@ -2,6 +2,29 @@
 Instruksi Pembuatan Function untuk Modul Image Compression
 """
 
+import base64
+import io
+from PIL import Image
+
+
+def _read_upload_file(file):
+    if hasattr(file, "file"):
+        file.file.seek(0)
+        data = file.file.read()
+        file.file.seek(0)
+        return data
+    if hasattr(file, "read"):
+        data = file.read()
+        return data if isinstance(data, bytes) else data.encode()
+    raise ValueError("UploadFile tidak valid")
+
+
+def _to_base64_png(image):
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+
 def jpeg(file, quality):
     """
     Fungsi: Mengkompresi gambar menggunakan algoritma JPEG.
@@ -16,4 +39,27 @@ def jpeg(file, quality):
         - ratio (float): Rasio kompresi.
         - method (string): Metode yang digunakan ("JPEG").
     """
-    pass
+    data = _read_upload_file(file)
+    original_kb = len(data) / 1024.0
+    image = Image.open(io.BytesIO(data))
+    if image.mode not in ("RGB", "L"):
+        image = image.convert("RGB")
+
+    output_jpeg = io.BytesIO()
+    image.save(output_jpeg, format="JPEG", quality=int(quality))
+    compressed_bytes = output_jpeg.getvalue()
+    compressed_kb = len(compressed_bytes) / 1024.0
+
+    compressed_image = Image.open(io.BytesIO(compressed_bytes))
+    if compressed_image.mode not in ("RGB", "L"):
+        compressed_image = compressed_image.convert("RGB")
+
+    ratio = original_kb / compressed_kb if compressed_kb > 0 else 0.0
+
+    return {
+        "processed_image": _to_base64_png(compressed_image),
+        "original_kb": round(original_kb, 3),
+        "compressed_kb": round(compressed_kb, 3),
+        "ratio": round(ratio, 3),
+        "method": "JPEG",
+    }
