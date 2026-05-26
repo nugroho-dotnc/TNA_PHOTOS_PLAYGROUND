@@ -6,6 +6,11 @@ Return : numpy array BGR hasil pemrosesan
 
 import cv2
 import numpy as np
+import base64
+
+def _to_base64_png(image):
+    _, buffer = cv2.imencode('.png', image)
+    return base64.b64encode(buffer).decode('utf-8')
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -39,7 +44,7 @@ def threshold(image, thresh, method):
     else:
         raise ValueError(f"Method '{method}' tidak dikenal. Pilih: binary, otsu, adaptive.")
 
-    return cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
+    return {"processed_image": _to_base64_png(cv2.cvtColor(result, cv2.COLOR_GRAY2BGR))}
 
 
 def canny(image, low, high):
@@ -54,7 +59,7 @@ def canny(image, low, high):
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     edges   = cv2.Canny(blurred, low, high)
 
-    return cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
+    return {"processed_image": _to_base64_png(cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR))}
 
 
 def sobel(image, axis):
@@ -82,7 +87,7 @@ def sobel(image, axis):
     else:
         raise ValueError(f"Axis '{axis}' tidak dikenal. Pilih: x, y, both.")
 
-    return cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
+    return {"processed_image": _to_base64_png(cv2.cvtColor(result, cv2.COLOR_GRAY2BGR))}
 
 
 def prewitt(image):
@@ -100,7 +105,7 @@ def prewitt(image):
     gy     = cv2.filter2D(gray, -1, ky)
     result = np.uint8(np.clip(np.sqrt(gx**2 + gy**2), 0, 255))
 
-    return cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
+    return {"processed_image": _to_base64_png(cv2.cvtColor(result, cv2.COLOR_GRAY2BGR))}
 
 
 def robert(image):
@@ -118,7 +123,7 @@ def robert(image):
     gy     = cv2.filter2D(gray, -1, ky)
     result = np.uint8(np.clip(np.sqrt(gx**2 + gy**2), 0, 255))
 
-    return cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
+    return {"processed_image": _to_base64_png(cv2.cvtColor(result, cv2.COLOR_GRAY2BGR))}
 
 
 def laplacian(image, ksize):
@@ -136,7 +141,7 @@ def laplacian(image, ksize):
     lap    = cv2.Laplacian(gray, cv2.CV_64F, ksize=ksize)
     result = np.uint8(np.clip(np.absolute(lap), 0, 255))
 
-    return cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
+    return {"processed_image": _to_base64_png(cv2.cvtColor(result, cv2.COLOR_GRAY2BGR))}
 
 
 def log(image, sigma):
@@ -157,7 +162,7 @@ def log(image, sigma):
     lap     = cv2.Laplacian(blurred, cv2.CV_64F)
     result  = np.uint8(np.clip(np.absolute(lap), 0, 255))
 
-    return cv2.cvtColor(result, cv2.COLOR_GRAY2BGR)
+    return {"processed_image": _to_base64_png(cv2.cvtColor(result, cv2.COLOR_GRAY2BGR))}
 
 
 def erode(image, kernel_size, iterations=1):
@@ -169,7 +174,7 @@ def erode(image, kernel_size, iterations=1):
     - return      : numpy array BGR hasil erosion
     """
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
-    return cv2.erode(image, kernel, iterations=iterations)
+    return {"processed_image": _to_base64_png(cv2.erode(image, kernel, iterations=iterations))}
 
 
 def dilate(image, kernel_size, iterations=1):
@@ -181,7 +186,7 @@ def dilate(image, kernel_size, iterations=1):
     - return      : numpy array BGR hasil dilation
     """
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
-    return cv2.dilate(image, kernel, iterations=iterations)
+    return {"processed_image": _to_base64_png(cv2.dilate(image, kernel, iterations=iterations))}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -189,20 +194,28 @@ def dilate(image, kernel_size, iterations=1):
 # ──────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    import os
+    os.makedirs("edge", exist_ok=True)
     img = cv2.imread("pxfuel.jpg")  # ganti dengan path gambar kamu
 
-    cv2.imwrite("out_threshold_binary.png",   threshold(img, 127, "binary"))
-    cv2.imwrite("out_threshold_otsu.png",     threshold(img, 0,   "otsu"))
-    cv2.imwrite("out_threshold_adaptive.png", threshold(img, 0,   "adaptive"))
-    cv2.imwrite("out_canny.png",              canny(img, 50, 150))
-    cv2.imwrite("out_sobel_x.png",            sobel(img, "x"))
-    cv2.imwrite("out_sobel_y.png",            sobel(img, "y"))
-    cv2.imwrite("out_sobel_both.png",         sobel(img, "both"))
-    cv2.imwrite("out_prewitt.png",            prewitt(img))
-    cv2.imwrite("out_robert.png",             robert(img))
-    cv2.imwrite("out_laplacian.png",          laplacian(img, 3))
-    cv2.imwrite("out_log.png",                log(img, 1.0))
-    cv2.imwrite("out_erode.png",              erode(img, 5, iterations=2))
-    cv2.imwrite("out_dilate.png",             dilate(img, 5, iterations=2))
+    def save_res(res_dict, filename):
+        filepath = os.path.join("edge", filename)
+        print(f"Hasil {filename}:", list(res_dict.keys()))
+        with open(filepath, "wb") as f:
+            f.write(base64.b64decode(res_dict["processed_image"]))
+
+    save_res(threshold(img, 127, "binary"), "out_threshold_binary.png")
+    save_res(threshold(img, 0,   "otsu"), "out_threshold_otsu.png")
+    save_res(threshold(img, 0,   "adaptive"), "out_threshold_adaptive.png")
+    save_res(canny(img, 50, 150), "out_canny.png")
+    save_res(sobel(img, "x"), "out_sobel_x.png")
+    save_res(sobel(img, "y"), "out_sobel_y.png")
+    save_res(sobel(img, "both"), "out_sobel_both.png")
+    save_res(prewitt(img), "out_prewitt.png")
+    save_res(robert(img), "out_robert.png")
+    save_res(laplacian(img, 3), "out_laplacian.png")
+    save_res(log(img, 0.001), "out_log.png")
+    save_res(erode(img, 5, iterations=2), "out_erode.png")
+    save_res(dilate(img, 5, iterations=2), "out_dilate.png")
 
     print("Semua hasil edge.py tersimpan.")

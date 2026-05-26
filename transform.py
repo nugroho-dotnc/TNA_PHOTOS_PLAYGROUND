@@ -140,3 +140,29 @@ def translate(file, tx, ty):
     processed = Image.new(image.mode, (width, height))
     processed.paste(image, (tx, ty))
     return {"processed_image": _to_base64_png(processed)}
+
+
+if __name__ == "__main__":
+    import os
+    os.makedirs("transform", exist_ok=True)
+    
+    def save_res(res_dict, filename):
+        filepath = os.path.join("transform", filename)
+        print(f"Hasil {filename}:", list(res_dict.keys()))
+        with open(filepath, "wb") as f:
+            f.write(base64.b64decode(res_dict["processed_image"]))
+
+    with open("pxfuel.jpg", "rb") as f:
+        data = f.read()
+    
+    class MockFile:
+        def read(self):
+            return data
+
+    save_res(rotate(MockFile(), 45), "out_transform_rotate.png")
+    save_res(flip(MockFile(), "horizontal"), "out_transform_flip_h.png")
+    save_res(crop(MockFile(), 100, 100, 300, 300), "out_transform_crop.png")
+    save_res(resize(MockFile(), 500, 500), "out_transform_resize.png")
+    save_res(translate(MockFile(), 50, 50), "out_transform_translate.png")
+    
+    print("Semua hasil transform.py tersimpan.")

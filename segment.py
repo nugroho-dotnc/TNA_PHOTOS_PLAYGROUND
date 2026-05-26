@@ -7,6 +7,11 @@ Return : numpy array BGR hasil segmentasi
 import cv2
 import numpy as np
 import random
+import base64
+
+def _to_base64_png(image):
+    _, buffer = cv2.imencode('.png', image)
+    return base64.b64encode(buffer).decode('utf-8')
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -47,7 +52,7 @@ def threshold(image, thresh, method):
 
     # Blend dengan gambar asli
     result = cv2.addWeighted(image, 0.4, overlay, 0.6, 0)
-    return result
+    return {"processed_image": _to_base64_png(result)}
 
 
 def edge(image, low, high):
@@ -78,7 +83,7 @@ def edge(image, low, high):
         )
         cv2.drawContours(result, [cnt], -1, color, thickness=2)
 
-    return result
+    return {"processed_image": _to_base64_png(result)}
 
 
 def region(image, n_segments):
@@ -111,7 +116,7 @@ def region(image, n_segments):
 
     centers = np.uint8(centers)
     result  = centers[labels.flatten()].reshape((h, w, 3))
-    return result
+    return {"processed_image": _to_base64_png(result)}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -119,13 +124,21 @@ def region(image, n_segments):
 # ──────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    import os
+    os.makedirs("segment", exist_ok=True)
     img = cv2.imread("pxfuel.jpg")  # ganti dengan path gambar kamu
 
-    cv2.imwrite("out_segment_threshold_binary.png",   threshold(img, 127, "binary"))
-    cv2.imwrite("out_segment_threshold_otsu.png",     threshold(img, 0,   "otsu"))
-    cv2.imwrite("out_segment_threshold_adaptive.png", threshold(img, 0,   "adaptive"))
-    cv2.imwrite("out_segment_edge.png",               edge(img, 50, 150))
-    cv2.imwrite("out_segment_region_3.png",           region(img, 3))
-    cv2.imwrite("out_segment_region_5.png",           region(img, 5))
+    def save_res(res_dict, filename):
+        filepath = os.path.join("segment", filename)
+        print(f"Hasil {filename}:", list(res_dict.keys()))
+        with open(filepath, "wb") as f:
+            f.write(base64.b64decode(res_dict["processed_image"]))
+
+    save_res(threshold(img, 127, "binary"), "out_segment_threshold_binary.png")
+    save_res(threshold(img, 0,   "otsu"), "out_segment_threshold_otsu.png")
+    save_res(threshold(img, 0,   "adaptive"), "out_segment_threshold_adaptive.png")
+    save_res(edge(img, 50, 150), "out_segment_edge.png")
+    save_res(region(img, 3), "out_segment_region_3.png")
+    save_res(region(img, 5), "out_segment_region_5.png")
 
     print("Semua hasil segment.py tersimpan.")

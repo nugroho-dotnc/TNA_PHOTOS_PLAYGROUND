@@ -6,6 +6,11 @@ Return : numpy array BGR hasil pemrosesan
 
 import cv2
 import numpy as np
+import base64
+
+def _to_base64_png(image):  
+    _, buffer = cv2.imencode('.png', image)
+    return base64.b64encode(buffer).decode('utf-8')
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -21,7 +26,7 @@ def brightness_contrast(image, alpha, beta):
     - beta   : float, offset kecerahan (-100 hingga +100)
     - return : numpy array BGR hasil
     """
-    return cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
+    return {"processed_image": _to_base64_png(cv2.convertScaleAbs(image, alpha=alpha, beta=beta))}
 
 
 def equalize(image, channel):
@@ -47,7 +52,7 @@ def equalize(image, channel):
     else:
         raise ValueError(f"Channel '{channel}' tidak dikenal. Pilih: gray, rgb.")
 
-    return result
+    return {"processed_image": _to_base64_png(result)}
 
 
 def sharpen(image, intensity):
@@ -64,7 +69,7 @@ def sharpen(image, intensity):
     ], dtype=np.float64)
 
     result = cv2.filter2D(image, -1, kernel)
-    return np.clip(result, 0, 255).astype(np.uint8)
+    return {"processed_image": _to_base64_png(np.clip(result, 0, 255).astype(np.uint8))}
 
 
 def smooth(image, kernel_size):
@@ -79,7 +84,7 @@ def smooth(image, kernel_size):
     if kernel_size % 2 == 0:
         kernel_size += 1  # pastikan ganjil
 
-    return cv2.GaussianBlur(image, (kernel_size, kernel_size), sigmaX=0)
+    return {"processed_image": _to_base64_png(cv2.GaussianBlur(image, (kernel_size, kernel_size), sigmaX=0))}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -87,12 +92,20 @@ def smooth(image, kernel_size):
 # ──────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    import os
+    os.makedirs("enhance", exist_ok=True)
     img = cv2.imread("pxfuel.jpg")  # ganti dengan path gambar kamu
 
-    cv2.imwrite("out_brightness_contrast.png", brightness_contrast(img, alpha=1.5, beta=30))
-    cv2.imwrite("out_equalize_gray.png",       equalize(img, "gray"))
-    cv2.imwrite("out_equalize_rgb.png",        equalize(img, "rgb"))
-    cv2.imwrite("out_sharpen.png",             sharpen(img, intensity=2.0))
-    cv2.imwrite("out_smooth.png",              smooth(img, kernel_size=7))
+    def save_res(res_dict, filename):
+        filepath = os.path.join("enhance", filename)
+        print(f"Hasil {filename}:", list(res_dict.keys()))
+        with open(filepath, "wb") as f:
+            f.write(base64.b64decode(res_dict["processed_image"]))
+
+    save_res(brightness_contrast(img, alpha=1.5, beta=30), "out_brightness_contrast.png")
+    save_res(equalize(img, "gray"), "out_equalize_gray.png")
+    save_res(equalize(img, "rgb"), "out_equalize_rgb.png")
+    save_res(sharpen(img, intensity=2.0), "out_sharpen.png")
+    save_res(smooth(img, kernel_size=7), "out_smooth.png")
 
     print("Semua hasil enhance.py tersimpan.")

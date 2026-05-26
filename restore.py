@@ -129,3 +129,29 @@ def convolve(file, kernel, normalize=False):
         output = output[:, :, 0]
     processed = Image.fromarray(output)
     return {"processed_image": _to_base64_png(processed)}
+
+
+if __name__ == "__main__":
+    import os
+    os.makedirs("restore", exist_ok=True)
+    
+    def save_res(res_dict, filename):
+        filepath = os.path.join("restore", filename)
+        print(f"Hasil {filename}:", list(res_dict.keys()))
+        with open(filepath, "wb") as f:
+            f.write(base64.b64decode(res_dict["processed_image"]))
+
+    with open("pxfuel.jpg", "rb") as f:
+        data = f.read()
+    
+    class MockFile:
+        def read(self):
+            return data
+
+    save_res(gaussian(MockFile(), 5), "out_restore_gaussian.png")
+    save_res(median(MockFile(), 5), "out_restore_median.png")
+    save_res(denoise_sp(MockFile(), 3), "out_restore_denoise_sp.png")
+    kernel_str = "[[-1,-1,-1],[-1,8,-1],[-1,-1,-1]]"
+    save_res(convolve(MockFile(), kernel_str, True), "out_restore_convolve.png")
+    
+    print("Semua hasil restore.py tersimpan.")

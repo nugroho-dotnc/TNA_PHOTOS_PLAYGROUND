@@ -63,3 +63,27 @@ def jpeg(file, quality):
         "ratio": round(ratio, 3),
         "method": "JPEG",
     }
+
+
+if __name__ == "__main__":
+    import os
+    os.makedirs("compress", exist_ok=True)
+    
+    def save_res(res_dict, filename):
+        filepath = os.path.join("compress", filename)
+        print(f"Hasil {filename}:", list(res_dict.keys()))
+        with open(filepath, "wb") as f:
+            f.write(base64.b64decode(res_dict["processed_image"]))
+
+    with open("pxfuel.jpg", "rb") as f:
+        data = f.read()
+    
+    class MockFile:
+        def read(self):
+            return data
+
+    res = jpeg(MockFile(), 50)
+    print("Stats compression:", {k: v for k, v in res.items() if k != "processed_image"})
+    save_res(res, "out_compress_jpeg.png")
+    
+    print("Semua hasil compress.py tersimpan.")

@@ -86,3 +86,27 @@ def hue_saturation(file, hue_shift, sat_scale):
     s = s.point(lambda p: int(max(0, min(255, p * float(sat_scale)))))
     processed = Image.merge("HSV", (h, s, v)).convert("RGB")
     return {"processed_image": _to_base64_png(processed)}
+
+
+if __name__ == "__main__":
+    import os
+    os.makedirs("color", exist_ok=True)
+    
+    def save_res(res_dict, filename):
+        filepath = os.path.join("color", filename)
+        print(f"Hasil {filename}:", list(res_dict.keys()))
+        with open(filepath, "wb") as f:
+            f.write(base64.b64decode(res_dict["processed_image"]))
+
+    with open("pxfuel.jpg", "rb") as f:
+        data = f.read()
+    
+    class MockFile:
+        def read(self):
+            return data
+
+    save_res(grayscale(MockFile()), "out_color_grayscale.png")
+    save_res(channel(MockFile(), "R"), "out_color_channel_R.png")
+    save_res(hue_saturation(MockFile(), 45, 1.5), "out_color_hue_sat.png")
+    
+    print("Semua hasil color.py tersimpan.")

@@ -71,6 +71,8 @@ def compare(image_before, image_after):
 
 if __name__ == "__main__":
     import json
+    import os
+    os.makedirs("histogram", exist_ok=True)
 
     img        = cv2.imread("pxfuel.jpg")       # gambar asli
     img_bright = cv2.imread("pxfuel.jpg") # gambar sudah diproses (contoh)
@@ -83,9 +85,17 @@ if __name__ == "__main__":
     print(f"  min  : {result_analyze['min']}")
     print(f"  max  : {result_analyze['max']}")
     print(f"  R[0] : {result_analyze['R'][0]}")   # frekuensi piksel nilai 0 channel R
+    
+    with open(os.path.join("histogram", "out_analyze.json"), "w") as f:
+        json.dump(result_analyze, f, indent=4)
+    print("Hasil analyze tersimpan ke histogram/out_analyze.json")
 
     # Test compare
     result_compare = compare(img, img_bright)
     print("\n=== COMPARE ===")
     print(f"  before mean : {result_compare['before']['mean']}")
     print(f"  after  mean : {result_compare['after']['mean']}")
+    
+    with open(os.path.join("histogram", "out_compare.json"), "w") as f:
+        json.dump(result_compare, f, indent=4)
+    print("Hasil compare tersimpan ke histogram/out_compare.json")
